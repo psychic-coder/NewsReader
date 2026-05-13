@@ -1,6 +1,6 @@
 import { Article } from '../types';
 
-const API_KEY = 'YOUR_API_KEY_HERE';
+const API_KEY = '65e8df40ae4e4b3c9a19972918255bf9';
 const BASE_URL = 'https://newsapi.org/v2';
 
 export const fetchTopHeadlines = async (page: number): Promise<Article[]> => {
