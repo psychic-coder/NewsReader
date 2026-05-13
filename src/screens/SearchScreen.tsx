@@ -28,7 +28,7 @@ const SearchScreen: React.FC = () => {
   const { items, page, loading, loadingMore, error, hasMore, query } =
     useAppSelector((state: RootState) => state.search);
 
-  const debounceTimer = useRef<any>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced search trigger
   useEffect(() => {
@@ -112,7 +112,7 @@ const SearchScreen: React.FC = () => {
       )}
       {error && (
         <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>⚠️  {error}</Text>
+          <Text style={styles.errorText}>⚠️ {error}</Text>
         </View>
       )}
       <FlatList<Article>
