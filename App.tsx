@@ -1,45 +1,38 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect } from 'react';
+import { Provider } from 'react-redux';
+import { store } from './src/store';
+import RootNavigator from './src/navigation/RootNavigator';
+import { setupAppStateListener } from './src/utils/lifecycle';
+import { loadArticles, saveArticles } from './src/utils/storage';
+import { hydrateFromCache, loadHeadlines } from './src/store/articlesSlice';
+import useAppDispatch from './src/hooks/useAppDispatch';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+const AppWrapper = () => {
+  const dispatch = useAppDispatch();
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  useEffect(() => {
+    // Hydrate from cache on mount
+    loadArticles().then(cached => {
+      dispatch(hydrateFromCache(cached));
+    });
+    // Fetch fresh data
+    dispatch(loadHeadlines(1));
 
+    // App lifecycle
+    const unsub = setupAppStateListener(
+      () => dispatch(loadHeadlines(1)), // foreground: refresh
+      () => saveArticles(store.getState().articles.items), // background: persist
+    );
+    return unsub;
+  }, [dispatch]);
+
+  return <RootNavigator />;
+};
+
+export default function App() {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
+    <Provider store={store}>
+      <AppWrapper />
+    </Provider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-export default App;

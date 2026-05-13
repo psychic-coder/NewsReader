@@ -1,97 +1,167 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# NewsReader
 
-# Getting Started
+A production-ready React Native news reader app (Android + iOS) built with the React Native CLI — no Expo.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Features
 
-## Step 1: Start Metro
+- **Top Headlines** — Fetches live US top headlines from [NewsAPI](https://newsapi.org) with infinite scrolling and pull-to-refresh
+- **Search** — Debounced full-text search across all articles with infinite scroll
+- **Article Detail** — Full article view with hero image, description, content, and a deep-link to the original source
+- **Offline-First Cache** — Cached headlines from the last session are shown immediately on app open while fresh data loads in the background
+- **App Lifecycle Handling** — Articles are persisted to local storage when the app backgrounds, and refreshed when it returns to the foreground
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+---
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+## Screenshots
 
-```sh
-# Using npm
-npm start
+_HomeScreen • SearchScreen • ArticleDetailScreen_
 
-# OR using Yarn
-yarn start
+---
+
+## Prerequisites
+
+| Tool | Version |
+|------|---------|
+| Node.js | ≥ 22.x (`nvm use 22`) |
+| npm | ≥ 10 |
+| Xcode | ≥ 15 (iOS) |
+| Android Studio | Hedgehog or newer (Android) |
+| CocoaPods | ≥ 1.14 |
+| Java (JDK) | 17 |
+
+---
+
+## Getting Started
+
+### 1. Clone and install
+
+```bash
+git clone <repo-url>
+cd NewsReader
+npm install
 ```
 
-## Step 2: Build and run your app
+### 2. iOS: Install CocoaPods
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```bash
+cd ios && pod install && cd ..
 ```
 
-### iOS
+### 3. Add your NewsAPI key
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+Open `src/api/newsApi.ts` and replace the placeholder:
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```ts
+const API_KEY = 'YOUR_API_KEY_HERE'; // ← paste your key here
 ```
 
-Then, and every time you update your native dependencies, run:
+Get a free API key from [https://newsapi.org/register](https://newsapi.org/register).
 
-```sh
-bundle exec pod install
-```
+### 4. Run the app
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
+**iOS (simulator)**
+```bash
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+**Android (emulator or device)**
+```bash
+npm run android
+```
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+**Metro bundler (separate terminal)**
+```bash
+npm start
+```
 
-## Step 3: Modify your app
+---
 
-Now that you have successfully run the app, let's make changes!
+## Project Structure
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+```
+src/
+├── api/
+│   └── newsApi.ts              # fetch wrappers for headlines + search
+├── components/
+│   ├── ArticleCard.tsx         # card used in both Home and Search lists
+│   ├── SearchBar.tsx           # controlled TextInput with clear button
+│   └── LoadingFooter.tsx       # pagination spinner
+├── navigation/
+│   └── RootNavigator.tsx       # stack + bottom-tab navigator
+├── screens/
+│   ├── HomeScreen.tsx
+│   ├── SearchScreen.tsx
+│   └── ArticleDetailScreen.tsx
+├── store/
+│   ├── index.ts                # configureStore, RootState, AppDispatch
+│   ├── articlesSlice.ts        # home feed state
+│   └── searchSlice.ts          # search state
+├── hooks/
+│   ├── useAppDispatch.ts       # typed dispatch hook
+│   └── useAppSelector.ts       # typed selector hook
+├── utils/
+│   ├── storage.ts              # AsyncStorage helpers
+│   └── lifecycle.ts            # AppState listener
+└── types/
+    └── index.ts                # Article, RootStackParamList, TabParamList
+```
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+---
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+## Key Technical Decisions
 
-## Congratulations! :tada:
+### Redux Toolkit for all async state
+All network state (loading, error, hasMore, items, page) lives in Redux slices — never in component `useState`. `createAsyncThunk` handles the full pending/fulfilled/rejected lifecycle cleanly.
 
-You've successfully run and modified your React Native App. :partying_face:
+### FlatList performance props
+Every list uses `removeClippedSubviews`, `maxToRenderPerBatch`, `windowSize`, and `initialNumToRender` to keep 60fps scrolling even with large datasets. `onEndReachedThreshold={0.5}` + a guard in `handleLoadMore` prevents duplicate fetches.
 
-### Now what?
+### Hydrate-then-fetch pattern
+On app open, cached articles from `AsyncStorage` are dispatched to Redux immediately (`hydrateFromCache`) so the user sees content instantly — then `loadHeadlines(1)` runs in the background to refresh with fresh data.
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+### AppState lifecycle
+`AppState.addEventListener` is set up in `App.tsx` on mount. Going to background triggers a `saveArticles()` persist. Coming back to the foreground triggers `loadHeadlines(1)`. The listener is removed on unmount.
 
-# Troubleshooting
+### No third-party UI libraries
+Every UI element is built with core React Native primitives (`View`, `Text`, `Image`, `FlatList`, `TouchableOpacity`, `StyleSheet`). This keeps the bundle lean and dependency-free.
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+### 300ms debounced search
+`setQuery` dispatches on every keystroke (so Redux owns the input value), but a `useEffect` + `setTimeout` in `SearchScreen` delays the actual API call by 300ms to avoid hammering the API.
 
-# Learn More
+---
 
-To learn more about React Native, take a look at the following resources:
+## API Endpoints
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+| Screen | Endpoint |
+|--------|----------|
+| HomeScreen | `GET /v2/top-headlines?country=us&pageSize=20&page={n}` |
+| SearchScreen | `GET /v2/everything?q={query}&pageSize=20&page={n}` |
+
+---
+
+## Given More Time, I Would Add
+
+| Feature | Rationale |
+|---------|-----------|
+| **Unit & integration tests** | Jest + React Native Testing Library for slice reducers and component rendering |
+| **Bookmarks / Saved Articles** | A third Redux slice + AsyncStorage key; third tab in the navigator |
+| **Full offline mode** | Cache search results per query; show a "You're offline" banner via NetInfo |
+| **Article sharing** | `Share.share()` from `react-native` — one call, zero extra deps |
+| **Push notifications** | `@react-native-firebase/messaging` for breaking-news alerts |
+| **Category filtering** | NewsAPI supports a `category` param; add horizontal chip filters on HomeScreen |
+| **Dark/light theme toggle** | `Appearance` API + React context; already using a design token color system |
+| **Accessibility (a11y)** | `accessibilityLabel`, `accessibilityRole`, and VoiceOver/TalkBack testing |
+
+---
+
+## Tech Stack
+
+| Layer | Library |
+|-------|---------|
+| Framework | React Native 0.85.3 (CLI) |
+| Language | TypeScript (strict) |
+| Navigation | React Navigation v7 (Stack + Bottom Tabs) |
+| State | Redux Toolkit + react-redux |
+| Storage | @react-native-async-storage/async-storage |
+| HTTP | Native `fetch` API (no axios) |
+| UI | Core RN components only |
